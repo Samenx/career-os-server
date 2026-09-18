@@ -607,3 +607,41 @@ test(
     assert.match(login.headers["set-cookie"][0], /Max-Age=7776000/);
   },
 );
+
+test("applied companies need a follow-up before one is scheduled, counted once", { skip: !enabled }, async () => {
+  const api = signedIn();
+  const baseline = (await api.get('/api/dashboard')).body.companiesNeedingFollowUp;
+  const created = await api.post('/api/companies').send({ name: 'Follow-up email regression' });
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  async function check(needed) {
+    const dashboard = await api.get('/api/dashboard');
+    assert.equal(dashboard.body.companiesNeedingFollowUp, baseline + Number(needed));
+    const filtered = await api.get('/api/companies?follow_up=needed');
+    assert.equal(filtered.body.some(company => company.id === id), needed);
+  }
+  try {
+    await check(false);
+    await api.put(`/api/companies/${id}`).send({ application_status: 'Applied' }).expect(200);
+    await check(true);
+    await api.put(`/api/companies/${id}`).send({ application_status: 'Not Applied' }).expect(200);
+    for (let n = 0; n < 2; n++)
+      await api.post('/api/applications').send({ company_id: id }).expect(201);
+    await check(true);
+    await api.put(`/api/companies/${id}`).send({ follow_up_sent: true }).expect(200);
+    await check(false);
+    const sent = await api.get('/api/companies?follow_up=sent');
+    assert.ok(sent.body.some(company => company.id === id));
+    await api.put(`/api/companies/${id}`).send({ follow_up_sent: false }).expect(200);
+    await check(true);
+    const scheduled = await api.post('/api/follow-ups').send({ company_id: id, follow_up_date: '2026-10-01' });
+    assert.equal(scheduled.status, 201);
+    await check(true);
+    await api.patch(`/api/follow-ups/${scheduled.body.id}/complete`).expect(200);
+    await check(false);
+    await api.put(`/api/follow-ups/${scheduled.body.id}`).send({ status: 'Cancelled' }).expect(200);
+    await check(true);
+  } finally {
+    await api.delete(`/api/companies/${id}`);
+  }
+});

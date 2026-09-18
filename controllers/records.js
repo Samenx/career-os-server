@@ -1,4 +1,5 @@
 const pool = require("../db/database");
+const { needsFollowUp, followUpSent } = require("../services/follow-up");
 const { ownerCondition, requireCompany } = require("../services/ownership");
 const definitions = {
   companies: {
@@ -248,6 +249,12 @@ function controller(table) {
       }
       const join =
         table === "companies" ? "" : " JOIN companies c ON c.id=t.company_id";
+      if (table === "companies" && req.query.follow_up === "needed")
+        conditions.push(needsFollowUp("t"));
+      if (table === "companies" && req.query.follow_up === "sent")
+        conditions.push(followUpSent("t"));
+      if (table === "companies" && req.query.follow_up === "not_needed")
+        conditions.push(`NOT ${needsFollowUp("t")}`);
       let columns =
         table === "companies"
           ? `t.*, (SELECT count(*)::int FROM applications a WHERE a.company_id=t.id) AS application_count, (SELECT a.status FROM applications a WHERE a.company_id=t.id ORDER BY a.application_date DESC NULLS LAST,a.id DESC LIMIT 1) AS latest_status, (SELECT a.application_date FROM applications a WHERE a.company_id=t.id ORDER BY a.application_date DESC NULLS LAST,a.id DESC LIMIT 1) AS latest_application_date, coalesce((SELECT json_agg(ct) FROM contacts ct WHERE ct.company_id=t.id),'[]') AS contacts`

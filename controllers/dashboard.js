@@ -1,4 +1,5 @@
 const pool = require("../db/database");
+const { needsFollowUp } = require("../services/follow-up");
 module.exports = async (req, res) => {
   const {
     rows: [counts],
@@ -12,6 +13,7 @@ module.exports = async (req, res) => {
  (SELECT count(*)::int FROM companies c WHERE c.application_status<>'Not Applied' OR EXISTS(SELECT 1 FROM applications a WHERE a.company_id=c.id)) AS applied,
  (SELECT count(*)::int FROM companies c WHERE c.application_status='Not Applied' AND NOT EXISTS(SELECT 1 FROM applications a WHERE a.company_id=c.id)) AS "notApplied",
  (SELECT count(*)::int FROM follow_ups WHERE status='Pending') AS "pendingFollowUps",
+ (SELECT count(*)::int FROM companies c WHERE ${needsFollowUp("c")}) AS "companiesNeedingFollowUp",
  (SELECT count(*)::int FROM companies c WHERE lower(btrim(coalesce(c.response,''))) NOT IN ('','no response') OR EXISTS(SELECT 1 FROM applications a WHERE a.company_id=c.id AND lower(btrim(coalesce(a.response,''))) NOT IN ('','no response'))) AS "responsesReceived",
  (SELECT count(*)::int FROM companies c WHERE c.application_status='Interview' OR EXISTS(SELECT 1 FROM applications a WHERE a.company_id=c.id AND a.status IN ('Interview','Technical Interview'))) AS interviews,
  (SELECT count(*)::int FROM companies c WHERE c.application_status='Accepted' OR EXISTS(SELECT 1 FROM applications a WHERE a.company_id=c.id AND a.status='Accepted')) AS accepted,

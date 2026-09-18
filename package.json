@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js",
+    "start": "node scripts/init-db.js && node server.js",
     "db:init": "node scripts/init-db.js",
     "test": "node --test tests/*.test.js"
   },

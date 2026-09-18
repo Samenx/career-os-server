@@ -12,7 +12,8 @@ const cookieName = "internship_session";
 const duration = 90 * 24 * 60 * 60 * 1000;
 const cookieOptions = () => ({
   httpOnly: true,
-  sameSite: "lax",
+  // The deployed frontend and API can be on separate sites.
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   secure: process.env.NODE_ENV === "production",
   path: "/api",
 });

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS companies (
  directory_profile_url VARCHAR(500), general_email VARCHAR(255), careers_email VARCHAR(255),
  phone VARCHAR(100), location VARCHAR(255), notes TEXT,
  application_status VARCHAR(50) NOT NULL DEFAULT 'Not Applied' CHECK (application_status IN ('Not Applied','Applied','Interview','Accepted','Rejected')),
- application_date DATE, response VARCHAR(50) NOT NULL DEFAULT 'No Response' CHECK (response IN ('No Response','Responded','Interview','Rejected','Accepted')),
+ application_date DATE, applied_through_linkedin BOOLEAN, response VARCHAR(50) NOT NULL DEFAULT 'No Response' CHECK (response IN ('No Response','Responded','Interview','Rejected','Accepted')),
  follow_up_sent BOOLEAN NOT NULL DEFAULT false, follow_up_date DATE,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 CREATE TABLE IF NOT EXISTS applications (
  id SERIAL PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
  position VARCHAR(255), application_date DATE, application_method VARCHAR(50) CHECK (application_method IN ('Email','LinkedIn','Company Website','Referral','Other')),
+ applied_through_linkedin BOOLEAN NOT NULL DEFAULT false,
  status VARCHAR(50) NOT NULL DEFAULT 'Applied' CHECK (status IN ('Applied','Under Review','Interview','Technical Interview','Offer','Accepted','Rejected','Withdrawn')),
  response TEXT, notes TEXT, follow_up_date DATE,
  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

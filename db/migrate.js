@@ -8,6 +8,15 @@ module.exports = async function migrate() {
     await db.query(
       fs.readFileSync(__dirname + "/migrations/001-accounts.sql", "utf8"),
     );
+    await db.query(
+      fs.readFileSync(__dirname + "/migrations/002-linkedin-connection.sql", "utf8"),
+    );
+    await db.query(
+      fs.readFileSync(__dirname + "/migrations/003-linkedin-checkbox.sql", "utf8"),
+    );
+    await db.query(
+      fs.readFileSync(__dirname + "/migrations/004-company-linkedin-checkbox.sql", "utf8"),
+    );
     await db.query("COMMIT");
   } catch (error) {
     await db.query("ROLLBACK");

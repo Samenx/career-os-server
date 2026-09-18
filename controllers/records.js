@@ -16,6 +16,7 @@ const definitions = {
       "notes",
       "application_status",
       "application_date",
+      "applied_through_linkedin",
       "response",
       "follow_up_sent",
       "follow_up_date",
@@ -42,6 +43,7 @@ const definitions = {
       "position",
       "application_date",
       "application_method",
+      "applied_through_linkedin",
       "status",
       "response",
       "notes",
@@ -79,7 +81,7 @@ const fieldDefaults = {
     follow_up_sent: false,
   },
   contacts: { contact_type: "Other" },
-  applications: { status: "Applied" },
+  applications: { status: "Applied", applied_through_linkedin: false },
   follow_ups: { status: "Pending" },
 };
 function validate(table, body, creating) {
@@ -131,8 +133,15 @@ function validate(table, body, creating) {
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
       )
         throw bad("Please enter a valid email address.");
-      if (key === "follow_up_sent" && typeof value !== "boolean")
-        throw bad("Follow up sent must be true or false.");
+      if (
+        ["follow_up_sent", "applied_through_linkedin"].includes(key) &&
+        typeof value !== "boolean"
+      )
+        throw bad(
+          key === "follow_up_sent"
+            ? "Follow up sent must be true or false."
+            : "Applied through LinkedIn must be true or false.",
+        );
       if (key === "response" && typeof value === "string") {
         const canonical = [
           "No Response",
@@ -244,6 +253,9 @@ function controller(table) {
           ? `t.*, (SELECT count(*)::int FROM applications a WHERE a.company_id=t.id) AS application_count, (SELECT a.status FROM applications a WHERE a.company_id=t.id ORDER BY a.application_date DESC NULLS LAST,a.id DESC LIMIT 1) AS latest_status, (SELECT a.application_date FROM applications a WHERE a.company_id=t.id ORDER BY a.application_date DESC NULLS LAST,a.id DESC LIMIT 1) AS latest_application_date, coalesce((SELECT json_agg(ct) FROM contacts ct WHERE ct.company_id=t.id),'[]') AS contacts`
           : "t.*,c.name AS company_name";
       let extra = "";
+      if (table === "companies") {
+        columns += ", COALESCE(t.applied_through_linkedin, EXISTS(SELECT 1 FROM applications a WHERE a.company_id=t.id AND a.applied_through_linkedin)) AS applied_through_linkedin";
+      }
       if (table === "follow_ups") {
         columns +=
           ",a.position AS application_position,ct.name AS contact_name";
@@ -266,8 +278,11 @@ function controller(table) {
       res.json(result.rows);
     },
     get: async (req, res) => {
+      const columns = table === "companies"
+        ? "t.*, COALESCE(t.applied_through_linkedin, EXISTS(SELECT 1 FROM applications a WHERE a.company_id=t.id AND a.applied_through_linkedin)) AS applied_through_linkedin"
+        : "t.*";
       const { rows } = await pool.query(
-        `SELECT * FROM ${table} t WHERE t.id=$1 AND ${ownerCondition(table, "t", "$2")}`,
+        `SELECT ${columns} FROM ${table} t WHERE t.id=$1 AND ${ownerCondition(table, "t", "$2")}`,
         [req.params.id, req.user.id],
       );
       if (!rows.length)
